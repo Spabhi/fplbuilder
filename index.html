@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FPL Team Builder | Fantasy Premier League</title>
+  <meta name="description" content="Build your Fantasy Premier League team with live player data, fixture difficulty ratings, and interactive pitch view. Pick 15 players — 11 starters and 4 bench." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- LOADING SCREEN -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-content">
+      <div class="loading-logo">
+        <span class="logo-icon">⚽</span>
+        <span class="logo-text">FPL<strong>Builder</strong></span>
+      </div>
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Loading Premier League data...</p>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app" class="app hidden">
+
+    <!-- HEADER -->
+    <header class="header" role="banner">
+      <div class="header-left">
+        <div class="header-logo">
+          <span class="logo-icon">⚽</span>
+          <span class="logo-text">FPL<strong>Builder</strong></span>
+        </div>
+        <div class="gw-badge" id="gw-badge">GW2</div>
+      </div>
+
+      <div class="header-center">
+        <nav class="header-tabs" role="tablist">
+          <button class="tab-btn active" role="tab" id="tab-pitch" aria-selected="true" aria-controls="panel-pitch" data-tab="pitch">
+            <span class="tab-icon">🏟️</span> My Team
+          </button>
+          <button class="tab-btn" role="tab" id="tab-fixtures" aria-selected="false" aria-controls="panel-fixtures" data-tab="fixtures">
+            <span class="tab-icon">📅</span> Fixtures
+          </button>
+          <button class="tab-btn" role="tab" id="tab-stats" aria-selected="false" aria-controls="panel-stats" data-tab="stats">
+            <span class="tab-icon">📊</span> Statistics
+          </button>
+        </nav>
+      </div>
+
+      <div class="header-right">
+        <div class="budget-display" id="budget-display" title="Remaining Budget">
+          <span class="budget-label">Budget</span>
+          <span class="budget-value" id="budget-value">£100.0m</span>
+        </div>
+        <div class="squad-count" id="squad-count" title="Players Selected">
+          <span class="count-value" id="count-value">0</span>
+          <span class="count-label">/ 15</span>
+        </div>
+        <button class="btn-auto-fill" id="btn-auto-fill" title="Auto-fill best available">
+          ✨ Auto Pick
+        </button>
+        <button class="btn-reset" id="btn-reset" title="Reset squad">
+          🔄 Reset
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content" role="main">
+
+      <!-- PITCH TAB -->
+      <div id="panel-pitch" class="tab-panel active" role="tabpanel" aria-labelledby="tab-pitch">
+        <div class="pitch-layout">
+
+          <!-- PITCH AREA -->
+          <section class="pitch-section" aria-label="Football Pitch">
+              <div class="pitch-container" id="pitch-widget">
+                <div class="drag-handle" title="Drag to move">⠿ Drag</div>
+                <div class="resize-handle" title="Drag to resize"></div>
+                <div class="pitch-widget-header">
+                  <div class="squad-gw-points" id="squad-gw-points">GW Points: 0</div>
+                </div>
+                <div class="pitch" id="pitch">
+
+                <!-- Pitch Lines -->
+                <div class="pitch-markings">
+                  <div class="halfway-line"></div>
+                  <div class="center-circle"></div>
+                  <div class="penalty-box top"></div>
+                  <div class="penalty-box bottom"></div>
+                  <div class="goal top"></div>
+                  <div class="goal bottom"></div>
+                </div>
+
+                <!-- Player Rows -->
+                <div class="player-rows" id="player-rows">
+                  <!-- FWD row -->
+                  <div class="player-row" id="row-fwd" data-position="FWD" role="group" aria-label="Forwards"></div>
+                  <!-- MID row -->
+                  <div class="player-row" id="row-mid" data-position="MID" role="group" aria-label="Midfielders"></div>
+                  <!-- DEF row -->
+                  <div class="player-row" id="row-def" data-position="DEF" role="group" aria-label="Defenders"></div>
+                  <!-- GKP row -->
+                  <div class="player-row" id="row-gkp" data-position="GKP" role="group" aria-label="Goalkeepers"></div>
+                </div>
+
+                <!-- Bench -->
+                <div class="bench-area" role="group" aria-label="Bench">
+                  <div class="bench-label">BENCH</div>
+                  <div class="bench-row" id="bench-row"></div>
+                </div>
+
+              </div>
+              
+              <div class="live-fixtures-area" id="live-fixtures-area">
+                <div class="drag-handle" title="Drag to move">⠿ Drag</div>
+                <div class="resize-handle" title="Drag to resize"></div>
+                <div class="live-fixtures-header">
+                  <h3>Matchweek <span id="live-gw-badge"></span> Live</h3>
+                </div>
+                <div class="live-fixtures-list" id="live-fixtures-list"></div>
+              </div>
+
+              <!-- TRANSFER LOG WIDGET -->
+              <div class="transfer-log-area" id="transfer-log-area">
+                <div class="drag-handle" title="Drag to move">⠿ Drag</div>
+                <div class="resize-handle" title="Drag to resize"></div>
+                <div class="transfer-log-header">
+                  <h3>🔄 Transfer Log</h3>
+                  <button class="transfer-log-clear" id="transfer-log-clear" title="Clear history">✕</button>
+                </div>
+                <div class="transfer-log-list" id="transfer-log-list">
+                  <div class="transfer-log-empty">No transfers yet — click <strong>Improve Team</strong> to get suggestions</div>
+                </div>
+              </div>
+          </section>
+
+          <!-- PLAYER PANEL -->
+          <aside class="player-panel" id="player-panel" aria-label="Player Selection">
+            <div class="panel-header">
+              <h2 class="panel-title" id="panel-title">Select a player slot</h2>
+              <div class="panel-subtitle" id="panel-subtitle">Click any slot on the pitch to begin</div>
+            </div>
+
+            <!-- Search & Filters -->
+            <div class="panel-filters">
+              <div class="search-wrapper">
+                <span class="search-icon" aria-hidden="true">🔍</span>
+                <input
+                  type="search"
+                  id="player-search"
+                  class="search-input"
+                  placeholder="Search player or team..."
+                  aria-label="Search players"
+                  autocomplete="off"
+                />
+              </div>
+
+              <div class="filter-tabs" role="tablist" aria-label="Position filter">
+                <button class="filter-tab active" data-pos="ALL" role="tab" aria-selected="true">All</button>
+                <button class="filter-tab gkp" data-pos="GKP" role="tab" aria-selected="false">GKP</button>
+                <button class="filter-tab def" data-pos="DEF" role="tab" aria-selected="false">DEF</button>
+                <button class="filter-tab mid" data-pos="MID" role="tab" aria-selected="false">MID</button>
+                <button class="filter-tab fwd" data-pos="FWD" role="tab" aria-selected="false">FWD</button>
+              </div>
+
+              <div class="filter-row">
+                <select id="team-filter" class="filter-select" aria-label="Filter by team">
+                  <option value="ALL">All Teams</option>
+                </select>
+                <select id="sort-filter" class="filter-select" aria-label="Sort players">
+                  <option value="points">Total Points</option>
+                  <option value="form">Form</option>
+                  <option value="price">Price (High-Low)</option>
+                  <option value="selected">% Selected</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Player List -->
+            <div class="player-list-wrapper">
+              <div class="player-list-header">
+                <span>Player</span>
+                <span>£</span>
+                <span>Pts</span>
+                <span>FDR</span>
+              </div>
+              <div class="player-list" id="player-list" role="listbox" aria-label="Players" tabindex="0">
+                <!-- populated by JS -->
+              </div>
+            </div>
+          </aside>
+
+        </div>
+      </div>
+
+      <!-- FIXTURES TAB -->
+      <div id="panel-fixtures" class="tab-panel" role="tabpanel" aria-labelledby="tab-fixtures">
+        <div class="fixtures-layout">
+          <div class="fixtures-header-row">
+            <h2>Fixture Difficulty Ratings</h2>
+            <div class="fdr-legend">
+              <span class="fdr-chip fdr-1">1 Very Easy</span>
+              <span class="fdr-chip fdr-2">2 Easy</span>
+              <span class="fdr-chip fdr-3">3 Medium</span>
+              <span class="fdr-chip fdr-4">4 Hard</span>
+              <span class="fdr-chip fdr-5">5 Very Hard</span>
+            </div>
+          </div>
+          <div class="fixtures-grid" id="fixtures-grid">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- STATS TAB -->
+      <div id="panel-stats" class="tab-panel" role="tabpanel" aria-labelledby="tab-stats">
+        <div class="stats-layout">
+          <h2>Player Statistics</h2>
+          <div class="stats-controls">
+            <div class="search-wrapper">
+              <span class="search-icon">🔍</span>
+              <input type="search" id="stats-search" class="search-input" placeholder="Search players..." aria-label="Search for stats" />
+            </div>
+            <select id="stats-position-filter" class="filter-select" aria-label="Filter stats by position">
+              <option value="ALL">All Positions</option>
+              <option value="GKP">Goalkeepers</option>
+              <option value="DEF">Defenders</option>
+              <option value="MID">Midfielders</option>
+              <option value="FWD">Forwards</option>
+            </select>
+            <select id="stats-sort" class="filter-select" aria-label="Sort stat column">
+              <option value="total_points">Total Points</option>
+              <option value="form">Form</option>
+              <option value="goals_scored">Goals</option>
+              <option value="assists">Assists</option>
+              <option value="clean_sheets">Clean Sheets</option>
+              <option value="bps">BPS</option>
+              <option value="ict_index">ICT Index</option>
+            </select>
+          </div>
+          <div class="stats-table-wrapper">
+            <table class="stats-table" id="stats-table" aria-label="Player statistics">
+              <thead>
+                <tr>
+                  <th scope="col">Player</th>
+                  <th scope="col">Team</th>
+                  <th scope="col">Pos</th>
+                  <th scope="col">Price</th>
+                  <th scope="col">Pts</th>
+                  <th scope="col">Form</th>
+                  <th scope="col">Goals</th>
+                  <th scope="col">Assists</th>
+                  <th scope="col">CS</th>
+                  <th scope="col">ICT</th>
+                  <th scope="col">Sel%</th>
+                </tr>
+              </thead>
+              <tbody id="stats-body">
+                <!-- populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- PLAYER ACTION POPUP -->
+    <div id="player-popup" class="player-popup hidden" role="dialog" aria-modal="true" aria-labelledby="popup-player-name">
+      <div class="popup-content">
+        <div class="popup-header">
+          <div class="popup-player-shirt" id="popup-shirt"></div>
+          <div class="popup-player-info">
+            <div class="popup-player-name" id="popup-player-name"></div>
+            <div class="popup-player-meta" id="popup-player-meta"></div>
+          </div>
+          <button class="popup-close" id="popup-close" aria-label="Close">✕</button>
+        </div>
+        <div class="popup-stats" id="popup-stats"></div>
+        <div class="popup-actions" id="popup-actions">
+          <button class="popup-btn captain" id="popup-captain">👑 Set Captain</button>
+          <button class="popup-btn vice" id="popup-vice">⭐ Set Vice-Captain</button>
+          <button class="popup-btn swap" id="popup-swap">🔄 Swap</button>
+          <button class="popup-btn remove" id="popup-remove">🗑️ Remove</button>
+        </div>
+        <div class="popup-fixtures" id="popup-fixtures"></div>
+        <div class="popup-points-breakdown" id="popup-points-breakdown"></div>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATIONS -->
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

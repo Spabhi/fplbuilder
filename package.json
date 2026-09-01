@@ -1,0 +1,12 @@
+{
+  "name": "fpl-app",
+  "version": "1.0.0",
+  "description": "FPL Team Builder with local proxy",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
