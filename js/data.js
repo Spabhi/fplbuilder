@@ -378,10 +378,45 @@ export function setViceCaptain(playerId) {
   notify('squad');
 }
 
-// ── Scoring heuristic ──
+// ── Multi-factor Composite Scoring Heuristic ──
+/**
+ * Computes a player's overall rating based on:
+ * 1. Total Points & Points Per Game (historical performance)
+ * 2. Form & epNext (recent performance & expected points)
+ * 3. Upcoming Fixture Difficulty (FDR: lower average difficulty = higher score)
+ * 4. Injury & Availability Status (heavily penalizes injured/suspended/doubtful players)
+ * 5. ICT Index (Influence, Creativity, Threat)
+ */
 export function computePlayerScore(p) {
+  if (!p) return 0;
+
+  // 1. Points & Points Per Game
   const gwPts = getPlayerGWPoints(p);
-  return (p.totalPoints * 0.3) + (gwPts * 1.5) + (p.form * 5) + (p.epNext * 7) + (p.pointsPerGame * 2);
+  const basePoints = (p.totalPoints * 0.25) + (p.pointsPerGame * 3.5) + (gwPts * 1.5);
+
+  // 2. Form & Expected Performance & ICT Index
+  const formScore = (p.form * 6.0) + (p.epNext * 8.0) + (p.ictIndex * 0.08);
+
+  // 3. Upcoming Fixtures (FDR: 1 = easiest, 5 = hardest)
+  let fdrBonus = 10;
+  if (p.fdrNext && p.fdrNext.length > 0) {
+    const avgFdr = p.fdrNext.reduce((sum, f) => sum + (f.fdr || 3), 0) / p.fdrNext.length;
+    fdrBonus = (6 - avgFdr) * 4.5; // FDR 2.0 = +18 bonus; FDR 4.0 = +9 bonus
+  }
+
+  const rawScore = basePoints + formScore + fdrBonus;
+
+  // 4. Injury & Availability Multiplier
+  let availabilityMultiplier = 1.0;
+  if (p.status === 'd') {
+    // Doubtful: scaled by chance of playing next round
+    availabilityMultiplier = p.chanceNextRound !== null ? (p.chanceNextRound / 100) : 0.5;
+  } else if (p.status !== 'a') {
+    // Injured, suspended, or unavailable (status: 'i', 's', 'n')
+    availabilityMultiplier = 0.05;
+  }
+
+  return rawScore * availabilityMultiplier;
 }
 
 // ── Reset ──
@@ -407,7 +442,7 @@ export function resetSquad() {
 // ── Auto Fill / Improve Team ──
 /**
  * Main auto-fill function.
- * If squad has 5+ players → "Improve Team" mode (targeted swaps).
+ * If squad has 5+ players → "Improve Team" mode (multi-factor team overhaul).
  * Otherwise → full squad builder from scratch.
  */
 export function autoFill() {
@@ -470,57 +505,53 @@ function buildFullSquad() {
 }
 
 /**
- * Improve existing team: find the weakest player in each position
- * and swap them for the best available alternative within budget.
- * Max 3 transfers per call (mimicking FPL free transfers).
- * Stores results in state.lastTransfers for the Transfer Log widget.
+ * Improve existing team:
+ * Evaluates all squad slots, replacing injured, doubtful, or underperforming
+ * players with the highest multi-factor scoring candidates available within budget.
+ * Overhauls as many players as needed while respecting £100m budget and max 3 per team.
  */
 function improveTeam() {
   const squadIds = getSquadPlayerIds();
   const teamCount = getTeamCounts();
   let budget = getRemainingBudget();
-  let transfers = 0;
-  const MAX_TRANSFERS = 3;
   const transferLog = [];
 
-  // Score each current squad player — lower score = candidate for replacement
+  // Score each current squad player — lower composite score = candidate for replacement
   const squadList = getSquadPlayers()
     .map(({ player, position, index, isBench }) => ({
       player, position, index, isBench,
       score: computePlayerScore(player),
     }))
-    .sort((a, b) => a.score - b.score); // weakest first
+    .sort((a, b) => a.score - b.score); // weakest composite score first
 
   for (const slot of squadList) {
-    if (transfers >= MAX_TRANSFERS) break;
-
     const { player, position, index } = slot;
     const sellingPrice = player.price;
     const availableBudget = budget + sellingPrice;
 
-    // Find best replacement of same position not in squad, within budget, within team limit
+    // Find best replacement of same position not in squad, within budget and team limit
     const candidates = state.allPlayers
       .filter(p =>
-        p.position === player.position &&
+        p.position === position &&
         !squadIds.has(p.id) &&
         p.id !== player.id &&
-        p.price <= availableBudget - 0.1 &&
+        p.price <= availableBudget + 0.001 &&
         (teamCount[p.teamId] || 0) < MAX_PER_TEAM &&
-        computePlayerScore(p) > slot.score * 1.1 // at least 10% better
+        computePlayerScore(p) > slot.score * 1.05 // at least 5% higher composite score
       )
       .sort((a, b) => computePlayerScore(b) - computePlayerScore(a));
 
     if (candidates.length === 0) continue;
 
     const best = candidates[0];
-    const costDiff = best.price - sellingPrice;
+    const costDiff = +(best.price - sellingPrice).toFixed(1);
 
-    // Record the transfer
+    // Record transfer
     transferLog.push({
       out: player,
       in: best,
       position,
-      costDiff: +costDiff.toFixed(1),
+      costDiff,
       timestamp: Date.now(),
     });
 
@@ -531,7 +562,6 @@ function improveTeam() {
     teamCount[player.teamId] = Math.max(0, (teamCount[player.teamId] || 1) - 1);
     teamCount[best.teamId] = (teamCount[best.teamId] || 0) + 1;
     budget -= costDiff;
-    transfers++;
   }
 
   state.lastTransfers = transferLog;
