@@ -75,19 +75,26 @@ export function buildPlayers(elements, teams, elementTypes) {
   const teamMap = Object.fromEntries(teams.map(t => [t.id, t]));
   const posMap = Object.fromEntries(elementTypes.map(e => [e.id, e.singular_name_short]));
 
+  // Player team corrections for transfers / API dataset inconsistencies
+  const PLAYER_TEAM_OVERRIDES = {
+    165: 5, // João Pedro -> Brighton & Hove Albion (BHA)
+  };
+
   return elements
     .filter(e => !e.removed)
-    .map(el => ({
-      id: el.id,
-      code: el.code,
-      firstName: el.first_name,
-      lastName: el.second_name,
-      webName: el.web_name,
-      displayName: el.known_name || el.web_name,
-      teamId: el.team,
-      teamName: teamMap[el.team]?.name || '',
-      teamShort: teamMap[el.team]?.short_name || '',
-      teamCode: el.team_code,
+    .map(el => {
+      const effectiveTeamId = PLAYER_TEAM_OVERRIDES[el.id] || el.team;
+      return {
+        id: el.id,
+        code: el.code,
+        firstName: el.first_name,
+        lastName: el.second_name,
+        webName: el.web_name,
+        displayName: el.known_name || el.web_name,
+        teamId: effectiveTeamId,
+        teamName: teamMap[effectiveTeamId]?.name || '',
+        teamShort: teamMap[effectiveTeamId]?.short_name || '',
+        teamCode: el.team_code,
       position: posMap[el.element_type] || 'UNK',
       positionId: el.element_type,
       price: el.now_cost / 10,
@@ -126,7 +133,8 @@ export function buildPlayers(elements, teams, elementTypes) {
       availabilityClass: statusToClass(el.status),
       // FDR slots (filled later)
       fdrNext: [],
-    }));
+    };
+  });
 }
 
 function statusToClass(status) {

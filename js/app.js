@@ -8,7 +8,7 @@ import {
   buildPlayers, buildTeamFixtures, buildTeamColors
 } from './api.js';
 import {
-  state, subscribe, notify, getRemainingBudget, getSquadCount, autoFill, resetSquad
+  state, subscribe, notify, getRemainingBudget, getSquadCount, getSquadPlayers, autoFill, resetSquad
 } from './data.js';
 import { renderPitch, initPitchKeyboard, addPlayerToSelectedSlot, renderLiveFixtures, renderSquadTotalPoints } from './pitch.js';
 import { initPanel, renderPlayerList, filterToPosition, updatePanelHeader } from './panel.js';
@@ -83,6 +83,7 @@ function initSubscriptions() {
       updateHeader();
       renderPlayerList();
       renderSquadTotalPoints();
+      renderSquadStatus();
     }
     if (event === 'transfers') {
       renderTransferLog();
@@ -126,6 +127,78 @@ function renderTransferLog() {
         <div class="transfer-cost ${costClass}">${costSign}</div>
       </div>`;
   }).join('');
+}
+
+// ── Player Status & Injury Widget Renderer ──
+function renderSquadStatus() {
+  const container = document.getElementById('squad-status-list');
+  const summaryBadge = document.getElementById('squad-status-summary');
+  if (!container || !summaryBadge) return;
+
+  const squad = getSquadPlayers();
+  if (squad.length === 0) {
+    container.innerHTML = '<div class="squad-status-empty">Add players to your squad to monitor injuries & availability.</div>';
+    summaryBadge.textContent = '0/15 Squad';
+    summaryBadge.className = 'squad-status-summary';
+    return;
+  }
+
+  let availCount = 0;
+  let doubtCount = 0;
+  let unavailCount = 0;
+
+  const posColors = { GKP: 'var(--clr-gkp)', DEF: 'var(--clr-def)', MID: 'var(--clr-mid)', FWD: 'var(--clr-fwd)' };
+
+  const rowsHtml = squad.map(({ player, isBench }) => {
+    const status = player.status;
+    let statusIcon = '🟢';
+    let statusLabel = 'Available';
+    let statusClass = 'avail';
+
+    if (status === 'd') {
+      doubtCount++;
+      statusIcon = '🟡';
+      statusLabel = player.chanceNextRound !== null ? `${player.chanceNextRound}% Chance` : 'Doubtful';
+      statusClass = 'doubt';
+    } else if (status !== 'a') {
+      unavailCount++;
+      statusIcon = '🔴';
+      statusLabel = status === 's' ? 'Suspended' : 'Injured/Out';
+      statusClass = 'unavail';
+    } else {
+      availCount++;
+    }
+
+    const newsText = player.news ? player.news : (status === 'a' ? 'Fully fit' : 'No news details');
+    const posColor = posColors[player.position] || '#fff';
+
+    return `
+      <div class="squad-status-row ${statusClass}">
+        <div class="status-player-head">
+          <span class="status-pos-badge" style="background:${posColor}">${player.position}</span>
+          <span class="status-player-name">${player.webName} <span class="status-team-short">(${player.teamShort})</span></span>
+          ${isBench ? '<span class="status-bench-tag">BENCH</span>' : ''}
+        </div>
+        <div class="status-details">
+          <span class="status-badge-pill ${statusClass}">${statusIcon} ${statusLabel}</span>
+          <span class="status-news-text">${newsText}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = rowsHtml;
+
+  if (unavailCount > 0) {
+    summaryBadge.textContent = `${unavailCount} Out · ${doubtCount} Doubt · ${availCount} Fit`;
+    summaryBadge.className = 'squad-status-summary danger';
+  } else if (doubtCount > 0) {
+    summaryBadge.textContent = `${doubtCount} Doubt · ${availCount} Fit`;
+    summaryBadge.className = 'squad-status-summary warning';
+  } else {
+    summaryBadge.textContent = `${availCount}/15 All Fit 🟢`;
+    summaryBadge.className = 'squad-status-summary success';
+  }
 }
 
 // ── Live points fetcher + poller ──
@@ -241,6 +314,7 @@ async function main() {
     renderPitch();
     renderPlayerList();
     updateHeader();
+    renderSquadStatus();
 
     // Start live polling (after initial render)
     initLivePolling();

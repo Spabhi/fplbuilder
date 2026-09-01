@@ -6,10 +6,12 @@ export function initWidgets() {
   const pitchWidget = document.getElementById('pitch-widget');
   const liveWidget = document.getElementById('live-fixtures-area');
   const transferWidget = document.getElementById('transfer-log-area');
+  const statusWidget = document.getElementById('squad-status-area');
 
   if (pitchWidget) { makeDraggable(pitchWidget); makeResizable(pitchWidget); }
   if (liveWidget) { makeDraggable(liveWidget); makeResizable(liveWidget); }
   if (transferWidget) { makeDraggable(transferWidget); makeResizable(transferWidget); }
+  if (statusWidget) { makeDraggable(statusWidget); makeResizable(statusWidget); }
 }
 
 let topZIndex = 100;

@@ -378,6 +378,156 @@ a { color: var(--clr-accent); text-decoration: none; }
 .transfer-cost.cost-down {
   color: #f87171;
 }
+
+/* ── Squad Status & Injury Widget ── */
+.squad-status-area {
+  width: 420px;
+  background: var(--clr-bg2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+  height: fit-content;
+  position: absolute;
+  top: 480px;
+  right: 100px;
+  transition: box-shadow 0.2s ease;
+  z-index: 10;
+}
+.squad-status-area.is-dragging {
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+.squad-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--clr-border);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+.squad-status-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+}
+.squad-status-summary {
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  color: var(--clr-text2);
+}
+.squad-status-summary.success {
+  background: rgba(74,222,128,0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74,222,128,0.3);
+}
+.squad-status-summary.warning {
+  background: rgba(250,204,21,0.15);
+  color: #facc15;
+  border: 1px solid rgba(250,204,21,0.3);
+}
+.squad-status-summary.danger {
+  background: rgba(248,113,113,0.15);
+  color: #f87171;
+  border: 1px solid rgba(248,113,113,0.3);
+}
+.squad-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.squad-status-empty {
+  color: var(--clr-text3);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 20px 0;
+}
+.squad-status-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--clr-bg3);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--clr-border);
+  transition: all var(--transition);
+}
+.squad-status-row.doubt {
+  border-left: 3px solid #facc15;
+}
+.squad-status-row.unavail {
+  border-left: 3px solid #f87171;
+}
+.squad-status-row.avail {
+  border-left: 3px solid #4ade80;
+}
+.status-player-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status-pos-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: white;
+}
+.status-player-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: white;
+}
+.status-team-short {
+  font-size: 0.72rem;
+  color: var(--clr-text3);
+  font-weight: 400;
+}
+.status-bench-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--clr-text3);
+  background: rgba(255,255,255,0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+.status-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+.status-badge-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.status-badge-pill.avail {
+  background: rgba(74,222,128,0.12);
+  color: #4ade80;
+}
+.status-badge-pill.doubt {
+  background: rgba(250,204,21,0.12);
+  color: #facc15;
+}
+.status-badge-pill.unavail {
+  background: rgba(248,113,113,0.12);
+  color: #f87171;
+}
+.status-news-text {
+  font-size: 0.75rem;
+  color: var(--clr-text2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .player-row {
   display: flex; justify-content: center; gap: 8px;
   padding: 4px 0;
