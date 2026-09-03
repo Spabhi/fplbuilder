@@ -1454,3 +1454,166 @@ a { color: var(--clr-accent); text-decoration: none; }
 .stat-icon {
   font-size: 0.85rem;
 }
+
+/* ── FPL Chips Widget ── */
+.chips-widget-area {
+  width: 420px;
+  background: var(--clr-bg2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+  height: fit-content;
+  position: absolute;
+  top: 100px;
+  left: 850px;
+  transition: box-shadow 0.2s ease;
+  z-index: 10;
+}
+.chips-widget-area.is-dragging {
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}
+.chips-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--clr-border);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+.chips-widget-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+}
+.chips-active-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  color: var(--clr-text2);
+}
+.chips-active-badge.active {
+  background: linear-gradient(135deg, rgba(234,179,8,0.25), rgba(168,85,247,0.25));
+  color: #facc15;
+  border: 1px solid rgba(234,179,8,0.4);
+  box-shadow: 0 0 12px rgba(234,179,8,0.2);
+}
+.chips-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.chip-card {
+  background: var(--clr-bg3);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  transition: all var(--transition);
+}
+.chip-card.active {
+  border-color: #facc15;
+  background: rgba(234,179,8,0.08);
+  box-shadow: 0 0 15px rgba(234,179,8,0.15);
+}
+.chip-head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.chip-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.chip-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.chip-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: white;
+}
+.chip-desc {
+  font-size: 0.68rem;
+  color: var(--clr-text2);
+  line-height: 1.2;
+}
+.chip-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 4px;
+}
+.chip-status-pill {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.chip-status-pill.available {
+  background: rgba(34,197,94,0.15);
+  color: #4ade80;
+}
+.chip-status-pill.active {
+  background: rgba(234,179,8,0.2);
+  color: #facc15;
+}
+.chip-status-pill.used {
+  background: rgba(255,255,255,0.06);
+  color: var(--clr-text3);
+}
+.chip-btn {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all var(--transition);
+}
+.chip-btn.play {
+  background: linear-gradient(135deg, var(--clr-accent2), var(--clr-purple));
+  color: white;
+}
+.chip-btn.play:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.chip-btn.cancel {
+  background: rgba(239,68,68,0.2);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.4);
+}
+.chip-btn.cancel:hover {
+  background: rgba(239,68,68,0.3);
+}
+
+/* 3x Captain Badge */
+.captain-badge.triple {
+  background: linear-gradient(135deg, #facc15, #f59e0b) !important;
+  color: #000 !important;
+  font-size: 0.65rem !important;
+  box-shadow: 0 0 10px rgba(250,204,21,0.6) !important;
+}
+
+/* Bench Boost Banner */
+.bench-boost-banner {
+  width: 100%;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #facc15;
+  background: rgba(234,179,8,0.15);
+  border: 1px solid rgba(234,179,8,0.3);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+  animation: pulse-border 1.5s infinite;
+}

@@ -6,7 +6,7 @@ import {
   state, notify, getSlotPlayer, setSlotPlayer, removePlayer,
   swapSlots, getSquadPlayers, canAddPlayer, setCaptain, setViceCaptain,
   getTeamFixtures, isBenched, recalcBench, getPlayerGWPoints,
-  getPlayerLiveStats, getTotalGWPoints
+  getPlayerLiveStats, getTotalGWPoints, toggleChip, getActiveChip, getChipName
 } from './data.js';
 import { playerPhotoUrl } from './api.js';
 import { showToast } from './app.js';
@@ -18,6 +18,7 @@ export function renderPitch() {
   renderBench();
   renderSquadTotalPoints();
   renderLiveFixtures();
+  renderChipsWidget();
 }
 
 // ── Total GW points badge ──
@@ -145,9 +146,95 @@ function renderBench() {
   const benchRow = document.getElementById('bench-row');
   if (!benchRow) return;
   benchRow.innerHTML = '';
+
+  const isBenchBoost = state.chips?.benchBoost?.active;
+  if (isBenchBoost) {
+    const banner = document.createElement('div');
+    banner.className = 'bench-boost-banner';
+    banner.innerHTML = '⚡ BENCH BOOST ACTIVE — Bench Points Count!';
+    benchRow.appendChild(banner);
+  }
+
   state.bench.forEach(b => {
     const player = getSlotPlayer(b.pos, b.index);
     benchRow.appendChild(createPlayerSlot(b.pos, b.index, player, true));
+  });
+}
+
+// ── FPL Chips Widget Renderer ──
+export function renderChipsWidget() {
+  const grid = document.getElementById('chips-grid');
+  const badge = document.getElementById('chips-active-badge');
+  if (!grid || !badge) return;
+
+  const activeChipKey = getActiveChip();
+  if (activeChipKey) {
+    badge.textContent = `⚡ ${getChipName(activeChipKey)} Active`;
+    badge.className = 'chips-active-badge active';
+  } else {
+    badge.textContent = 'No active chip';
+    badge.className = 'chips-active-badge';
+  }
+
+  const chipsDef = [
+    { key: 'wildcard', icon: '🃏', name: 'Wildcard', desc: 'Unlimited free transfers for this GW' },
+    { key: 'freeHit', icon: '🎯', name: 'Free Hit', desc: 'Unlimited transfers for 1 GW; squad resets next GW' },
+    { key: 'tripleCaptain', icon: '👑', name: 'Triple Captain', desc: 'Captain earns 3x points instead of 2x' },
+    { key: 'benchBoost', icon: '🚀', name: 'Bench Boost', desc: 'Bench player points count towards total score' },
+  ];
+
+  grid.innerHTML = chipsDef.map(chip => {
+    const chipState = state.chips?.[chip.key] || { status: 'available', active: false };
+    const isActive = chipState.active;
+    const isUsed = chipState.status === 'used';
+
+    let statusText = 'AVAILABLE';
+    let statusClass = 'available';
+    let btnText = 'Play Chip';
+    let btnClass = 'play';
+
+    if (isActive) {
+      statusText = 'ACTIVE ⚡';
+      statusClass = 'active';
+      btnText = 'Cancel Chip';
+      btnClass = 'cancel';
+    } else if (isUsed) {
+      statusText = 'USED';
+      statusClass = 'used';
+      btnText = 'Played';
+      btnClass = 'used';
+    }
+
+    return `
+      <div class="chip-card ${isActive ? 'active' : ''} ${isUsed ? 'disabled' : ''}">
+        <div class="chip-head">
+          <span class="chip-icon">${chip.icon}</span>
+          <div class="chip-info">
+            <div class="chip-title">${chip.name}</div>
+            <div class="chip-desc">${chip.desc}</div>
+          </div>
+        </div>
+        <div class="chip-footer">
+          <span class="chip-status-pill ${statusClass}">${statusText}</span>
+          <button class="chip-btn ${btnClass}" data-chip="${chip.key}" ${isUsed ? 'disabled' : ''}>
+            ${btnText}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.chip-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const chipKey = btn.dataset.chip;
+      const res = toggleChip(chipKey);
+      if (res.ok) {
+        showToast(res.message, res.active ? 'success' : 'info');
+        renderPitch();
+      } else {
+        showToast(res.reason, 'error');
+      }
+    });
   });
 }
 
@@ -156,16 +243,17 @@ function buildFilledSlot(player, isBench) {
   const posClass = player.position.toLowerCase();
   const isCaptain = state.captainId === player.id;
   const isVice = state.viceCaptainId === player.id;
+  const isTripleCaptain = state.chips?.tripleCaptain?.active;
 
   const captainBadge = isCaptain
-    ? '<span class="captain-badge" title="Captain">C</span>' : '';
+    ? `<span class="captain-badge ${isTripleCaptain ? 'triple' : ''}" title="${isTripleCaptain ? 'Triple Captain (3x)' : 'Captain (2x)'}">${isTripleCaptain ? '3x' : 'C'}</span>` : '';
   const viceBadge = isVice
     ? '<span class="vice-badge" title="Vice-Captain">V</span>' : '';
 
   // Live GW points
   const gwPts = getPlayerGWPoints(player);
-  const displayPts = isCaptain ? gwPts * 2 : gwPts;
-  const ptsSuffix = isCaptain ? ' (C×2)' : (isVice ? ' (VC)' : '');
+  const displayPts = isCaptain ? gwPts * (isTripleCaptain ? 3 : 2) : gwPts;
+  const ptsSuffix = isCaptain ? (isTripleCaptain ? ' (C×3)' : ' (C×2)') : (isVice ? ' (VC)' : '');
 
   // Stats tooltip for live breakdown
   const live = getPlayerLiveStats(player);

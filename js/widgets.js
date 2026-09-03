@@ -7,11 +7,13 @@ export function initWidgets() {
   const liveWidget = document.getElementById('live-fixtures-area');
   const transferWidget = document.getElementById('transfer-log-area');
   const statusWidget = document.getElementById('squad-status-area');
+  const chipsWidget = document.getElementById('chips-widget-area');
 
   if (pitchWidget) { makeDraggable(pitchWidget); makeResizable(pitchWidget); }
   if (liveWidget) { makeDraggable(liveWidget); makeResizable(liveWidget); }
   if (transferWidget) { makeDraggable(transferWidget); makeResizable(transferWidget); }
   if (statusWidget) { makeDraggable(statusWidget); makeResizable(statusWidget); }
+  if (chipsWidget) { makeDraggable(chipsWidget); makeResizable(chipsWidget); }
 }
 
 let topZIndex = 100;

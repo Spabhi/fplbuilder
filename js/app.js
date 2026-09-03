@@ -8,7 +8,7 @@ import {
   buildPlayers, buildTeamFixtures, buildTeamColors
 } from './api.js';
 import {
-  state, subscribe, notify, getRemainingBudget, getSquadCount, getSquadPlayers, autoFill, resetSquad
+  state, subscribe, notify, getRemainingBudget, getSquadCount, getSquadPlayers, autoFill, resetSquad, loadSquadFromLocalStorage
 } from './data.js';
 import { renderPitch, initPitchKeyboard, addPlayerToSelectedSlot, renderLiveFixtures, renderSquadTotalPoints } from './pitch.js';
 import { initPanel, renderPlayerList, filterToPosition, updatePanelHeader } from './panel.js';
@@ -79,7 +79,7 @@ function initTabs() {
 // ── State subscriptions ──
 function initSubscriptions() {
   subscribe((event) => {
-    if (event === 'squad' || event === 'update') {
+    if (event === 'squad' || event === 'update' || event === 'chips') {
       updateHeader();
       renderPlayerList();
       renderSquadTotalPoints();
@@ -266,6 +266,9 @@ async function main() {
       player.fdrNext = (state.fixtures[player.teamId] || []).slice(0, 5);
     });
 
+    // Load persisted squad from localStorage if available
+    loadSquadFromLocalStorage();
+
     // Initialize UI modules
     initTabs();
     initSubscriptions();
@@ -282,9 +285,22 @@ async function main() {
         const count = getSquadCount();
         autoFill();
         const made = state.lastTransfers?.length || 0;
-        const msg = count >= 5
-          ? (made > 0 ? `${made} transfer${made > 1 ? 's' : ''} made!` : 'No improvements found within budget')
-          : 'Squad auto-filled!';
+        const isUnlimited = state.chips?.wildcard?.active || state.chips?.freeHit?.active;
+        let msg = '';
+        if (count >= 5) {
+          if (made > 0) {
+            if (isUnlimited) {
+              msg = `⚡ Unlimited Overhaul: ${made} transfer${made > 1 ? 's' : ''} made!`;
+            } else {
+              const t = state.lastTransfers[0];
+              msg = `Weekly transfer: ${t.out.webName} (${t.out.teamShort}) ➔ ${t.in.webName} (${t.in.teamShort})`;
+            }
+          } else {
+            msg = 'No beneficial transfer found within budget & 3-player team limit';
+          }
+        } else {
+          msg = 'Squad auto-filled!';
+        }
         showToast(msg, made > 0 || count < 5 ? 'success' : 'info');
         renderPitch();
         updateHeader();
