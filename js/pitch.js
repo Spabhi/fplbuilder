@@ -419,9 +419,6 @@ export function addPlayerToSelectedSlot(player) {
   setSlotPlayer(position, index, player);
   state.selectedSlot = null;
 
-  // Recalculate bench after every manual addition
-  recalcBench();
-
   // Auto-assign captain/vice if first high-scorers
   if (!state.captainId || !state.viceCaptainId) {
     const starters = getSquadPlayers()

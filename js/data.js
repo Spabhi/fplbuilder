@@ -542,8 +542,21 @@ export function swapSlots(posA, idxA, posB, idxB) {
   state.squad[posA][idxA] = pB;
   state.squad[posB][idxB] = pA;
 
-  // Rebuild bench automatically — this handles all bench membership updates correctly
-  recalcBench();
+  // Handle captaincy transfer if a benched player was Captain or Vice-Captain
+  if (aIsBench !== bIsBench) {
+    const benchedPlayer = aIsBench ? pB : pA;
+    const incomingPitchPlayer = aIsBench ? pA : pB;
+
+    if (benchedPlayer && incomingPitchPlayer) {
+      if (state.captainId === benchedPlayer.id) {
+        state.captainId = incomingPitchPlayer.id;
+      }
+      if (state.viceCaptainId === benchedPlayer.id) {
+        state.viceCaptainId = incomingPitchPlayer.id;
+      }
+    }
+  }
+
   saveSquadToLocalStorage();
   notify('squad');
   return { ok: true };
@@ -568,38 +581,47 @@ export function setViceCaptain(playerId) {
 // ── Multi-factor Composite Scoring Heuristic ──
 /**
  * Computes a player's overall rating based on:
- * 1. Total Points & Points Per Game (historical performance)
- * 2. Form & epNext (recent performance & expected points)
- * 3. Upcoming Fixture Difficulty (FDR: lower average difficulty = higher score)
- * 4. Injury & Availability Status (heavily penalizes injured/suspended/doubtful players)
- * 5. ICT Index (Influence, Creativity, Threat)
+ * 1. Historical Gameweek Points: Total Points & Points Per Game & recent GW points
+ * 2. Player Form: Recent form (p.form * 6.5) & Expected points (epNext * 8.0) & ICT Index
+ * 3. Upcoming Fixtures & Team Difficulty: FDR score (weighted heavily for next GW)
+ * 4. Home / Away Advantage: +3.5 rating bonus if next fixture is at Home (isHome === true)
+ * 5. Injury & Availability Status: Penalty multiplier for doubtful, injured, or suspended players
  */
 export function computePlayerScore(p) {
   if (!p) return 0;
 
-  // 1. Points & Points Per Game
+  // 1. Points & Points Per Game (historical performance)
   const gwPts = getPlayerGWPoints(p);
   const basePoints = (p.totalPoints * 0.25) + (p.pointsPerGame * 3.5) + (gwPts * 1.5);
 
-  // 2. Form & Expected Performance & ICT Index
-  const formScore = (p.form * 6.0) + (p.epNext * 8.0) + (p.ictIndex * 0.08);
+  // 2. Player Form & Expected Performance & ICT Index
+  const formScore = (p.form * 6.5) + (p.epNext * 8.0) + (p.ictIndex * 0.08);
 
-  // 3. Upcoming Fixtures (FDR: 1 = easiest, 5 = hardest)
+  // 3. Upcoming Fixtures & Team Difficulty (FDR: 1 = easiest, 5 = hardest)
   let fdrBonus = 10;
+  let homeAdvantageBonus = 0;
+
   if (p.fdrNext && p.fdrNext.length > 0) {
-    const avgFdr = p.fdrNext.reduce((sum, f) => sum + (f.fdr || 3), 0) / p.fdrNext.length;
-    fdrBonus = (6 - avgFdr) * 4.5; // FDR 2.0 = +18 bonus; FDR 4.0 = +9 bonus
+    const nextFix = p.fdrNext[0];
+    const nextFdr = nextFix.fdr || 3;
+    const remainingAvgFdr = p.fdrNext.slice(1).reduce((sum, f) => sum + (f.fdr || 3), 0) / Math.max(1, p.fdrNext.length - 1);
+    const weightedFdr = (nextFdr * 0.5) + (remainingAvgFdr * 0.5);
+
+    fdrBonus = (6 - weightedFdr) * 4.5;
+
+    // 4. Home / Away Advantage
+    if (nextFix.isHome) {
+      homeAdvantageBonus = 3.5; // +3.5 rating bonus for playing at Home
+    }
   }
 
-  const rawScore = basePoints + formScore + fdrBonus;
+  const rawScore = basePoints + formScore + fdrBonus + homeAdvantageBonus;
 
-  // 4. Injury & Availability Multiplier
+  // 5. Injury & Availability Multiplier
   let availabilityMultiplier = 1.0;
   if (p.status === 'd') {
-    // Doubtful: scaled by chance of playing next round
     availabilityMultiplier = p.chanceNextRound !== null ? (p.chanceNextRound / 100) : 0.5;
   } else if (p.status !== 'a') {
-    // Injured, suspended, or unavailable (status: 'i', 's', 'n')
     availabilityMultiplier = 0.05;
   }
 
@@ -765,7 +787,6 @@ function improveTeamUnlimited() {
   }
 
   state.lastTransfers = transferLog;
-  recalcBench();
   saveSquadToLocalStorage();
   notify('squad');
   notify('transfers');
@@ -832,7 +853,6 @@ function improveTeamSingle() {
   }
 
   state.lastTransfers = transferLog;
-  recalcBench();
   saveSquadToLocalStorage();
   notify('squad');
   notify('transfers');
