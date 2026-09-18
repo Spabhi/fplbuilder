@@ -9,7 +9,7 @@ export const POSITION_LIMITS = {
   FWD: { total: 3, minPlay: 1, maxPlay: 3 },
 };
 
-export const BUDGET = 1000; // in tenths (£100.0m)
+export const BUDGET = 1008; // in tenths (£100.8m)
 export const MAX_PER_TEAM = 3;
 
 // ── App State ──
