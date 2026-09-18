@@ -628,6 +628,61 @@ export function setViceCaptain(playerId) {
   notify('squad');
 }
 
+/**
+ * Compute Projected Gameweek Points for a player based on multi-factor predictive model:
+ * 1. Player & Team Form (Form rating, PPG, epNext, xG, xA)
+ * 2. Fixture Difficulty Rating (FDR 1 to 5)
+ * 3. Home / Away Advantage (+0.7 pts Home boost for attack & clean sheet probability)
+ * 4. Opponent xG Concessions & Defensive/Offensive Vulnerabilities
+ * 5. Team Tactics & Positional Scoring Rules (GKP, DEF, MID, FWD)
+ * 6. Availability & Expected Playing Minutes
+ */
+export function computeProjectedPoints(player, nextFixtureOverride = null) {
+  if (!player) return 0;
+
+  const nextFix = nextFixtureOverride || (player.fdrNext && player.fdrNext.length > 0 ? player.fdrNext[0] : null);
+  const fdr = nextFix ? (nextFix.fdr || 3) : 3;
+  const isHome = nextFix ? !!nextFix.isHome : true;
+
+  const ppg = player.pointsPerGame || 0;
+  const form = player.form || 0;
+  const epNext = player.epNext || 0;
+  const xg = player.xg || 0;
+  const xa = player.xa || 0;
+
+  const formBaseline = (ppg * 0.35) + (form * 0.40) + (epNext * 0.25);
+  const expectedThreatBonus = (xg * 2.2) + (xa * 1.8);
+
+  const fdrImpact = (3 - fdr) * 0.8;
+  const homeAdvantageBonus = isHome ? 0.7 : -0.3;
+
+  const pos = player.position || 'UNK';
+  let xgConcessionBonus = 0;
+
+  if (pos === 'GKP' || pos === 'DEF') {
+    const csProbability = isHome ? (6 - fdr) * 0.22 : (5 - fdr) * 0.18;
+    xgConcessionBonus = csProbability * 2.2;
+  } else {
+    const attackConcessionMultiplier = (6 - fdr) * 0.35;
+    xgConcessionBonus = attackConcessionMultiplier + expectedThreatBonus;
+  }
+
+  const tacticalPositionalBase = { GKP: 2.2, DEF: 2.5, MID: 3.0, FWD: 3.2 };
+  const baseRating = tacticalPositionalBase[pos] || 2.5;
+
+  const rawProjection = (formBaseline * 0.45) + baseRating + fdrImpact + homeAdvantageBonus + xgConcessionBonus;
+
+  let availabilityMultiplier = 1.0;
+  if (player.status === 'd') {
+    availabilityMultiplier = player.chanceNextRound !== null ? (player.chanceNextRound / 100) : 0.5;
+  } else if (player.status !== 'a') {
+    availabilityMultiplier = 0.05;
+  }
+
+  const projected = Math.max(0.5, Math.min(15.0, rawProjection * availabilityMultiplier));
+  return parseFloat(projected.toFixed(1));
+}
+
 // ── Multi-factor Composite Scoring Heuristic ──
 /**
  * Computes a player's overall rating based on:
@@ -932,6 +987,7 @@ export function getFilteredPlayers() {
     );
   }
   const sortFn = {
+    projected: (a, b) => computeProjectedPoints(b) - computeProjectedPoints(a),
     points: (a, b) => b.totalPoints - a.totalPoints,
     form: (a, b) => b.form - a.form,
     price: (a, b) => b.price - a.price,

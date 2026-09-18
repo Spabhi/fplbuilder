@@ -4,7 +4,7 @@
 
 import {
   state, removePlayer, setCaptain, setViceCaptain, getTeamFixtures, notify,
-  getPlayerGWPoints, getPlayerLiveStats
+  getPlayerGWPoints, getPlayerLiveStats, computeProjectedPoints
 } from './data.js';
 import { renderPitch, enterSwapMode } from './pitch.js';
 import { showToast } from './app.js';
@@ -126,11 +126,19 @@ export function openPopup(player, position, index) {
     if (bits.length) gwBadge.innerHTML += `<span class="gw-live-bits">${bits.join(' ')}</span>`;
   }
 
+  const projPts = computeProjectedPoints(player);
+  const nextFixes = getTeamFixtures(player.teamId, 1);
+  const nextFix = nextFixes.length > 0 ? nextFixes[0] : null;
+
   // ── Season stats grid ──
   document.getElementById('popup-stats').innerHTML = `
     <div class="popup-stat">
       <div class="popup-stat-value highlight">${player.totalPoints}</div>
       <div class="popup-stat-label">Pts</div>
+    </div>
+    <div class="popup-stat">
+      <div class="popup-stat-value" style="color:#38bdf8;font-weight:800">🔮 ${projPts}</div>
+      <div class="popup-stat-label">Proj Pts</div>
     </div>
     <div class="popup-stat">
       <div class="popup-stat-value">£${player.price.toFixed(1)}</div>
@@ -139,10 +147,6 @@ export function openPopup(player, position, index) {
     <div class="popup-stat">
       <div class="popup-stat-value">${player.form.toFixed(1)}</div>
       <div class="popup-stat-label">Form</div>
-    </div>
-    <div class="popup-stat">
-      <div class="popup-stat-value">${player.epNext.toFixed(1)}</div>
-      <div class="popup-stat-label">xPts</div>
     </div>
     <div class="popup-stat">
       <div class="popup-stat-value">${player.goals}</div>
@@ -170,9 +174,43 @@ export function openPopup(player, position, index) {
   captainBtn.textContent = isCaptain ? '👑 Remove Captain'   : '👑 Set Captain';
   viceBtn.textContent    = isVice    ? '⭐ Remove Vice-C'    : '⭐ Set Vice-Captain';
 
-  // ── Fixtures section ──
+  const pos = player.position || 'UNK';
+  const fdrVal = nextFix ? nextFix.fdr : 3;
+  const fdrColor = fdrVal <= 2 ? '#4ade80' : (fdrVal === 3 ? '#facc15' : '#f87171');
+
+  // ── Fixtures & Projection Card section ──
   const fixContainer = document.getElementById('popup-fixtures');
   fixContainer.innerHTML = `
+    <div class="popup-projected-card">
+      <div class="proj-header">
+        <div class="proj-title-group">
+          <span class="proj-icon">🔮</span>
+          <div>
+            <div class="proj-heading">GW Projected Score</div>
+            <div class="proj-sub">FDR, venue, form & xG concessions</div>
+          </div>
+        </div>
+        <div class="proj-value-badge">${projPts} pts</div>
+      </div>
+      <div class="proj-factors">
+        <div class="proj-factor">
+          <span class="factor-name">Next Opponent</span>
+          <span class="factor-val" style="color:${fdrColor}">${nextFix ? `${nextFix.opponentName} (${nextFix.isHome ? 'H' : 'A'})` : 'N/A'}</span>
+        </div>
+        <div class="proj-factor">
+          <span class="factor-name">Venue Advantage</span>
+          <span class="factor-val">${nextFix?.isHome ? 'Home (+0.7)' : 'Away (-0.3)'}</span>
+        </div>
+        <div class="proj-factor">
+          <span class="factor-name">Form & Threat</span>
+          <span class="factor-val">Form ${player.form.toFixed(1)} · xG ${player.xg.toFixed(2)}</span>
+        </div>
+        <div class="proj-factor">
+          <span class="factor-name">Tactics Focus</span>
+          <span class="factor-val">${pos === 'DEF' || pos === 'GKP' ? 'Clean Sheet' : 'Goal Concession'}</span>
+        </div>
+      </div>
+    </div>
     <div class="popup-section-title">📅 Next Fixtures</div>
     <div class="popup-fix-list" id="popup-fix-list"></div>
   `;

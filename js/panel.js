@@ -3,7 +3,7 @@
  */
 
 import {
-  state, getFilteredPlayers, getSquadPlayerIds, getTeamFixtures, notify
+  state, getFilteredPlayers, getSquadPlayerIds, getTeamFixtures, notify, computeProjectedPoints
 } from './data.js';
 import { addPlayerToSelectedSlot } from './pitch.js';
 
@@ -195,6 +195,7 @@ function buildPlayerRow(player, isInSquad) {
     `<span class="fdr-pip fdr-${f.fdr}" title="GW${f.gw}: ${f.opponentName} (${f.isHome ? 'H' : 'A'}) FDR${f.fdr}">${f.fdr}</span>`
   ).join('');
 
+  const projPts = computeProjectedPoints(player);
   const newsEl = player.news ? `<span class="pi-news" title="${player.news}">⚠</span>` : '';
 
   row.innerHTML = `
@@ -202,6 +203,7 @@ function buildPlayerRow(player, isInSquad) {
       <div class="pi-name-row">
         <span class="pi-name">${player.displayName}</span>
         <span class="pi-pos-badge ${posLower}">${player.position}</span>
+        <span class="pi-proj-pill" title="Projected GW Points">🔮 ${projPts}</span>
       </div>
       <div class="pi-meta">
         <span class="pi-availability ${availClass}" title="${availabilityTitle(player.status)}"></span>
@@ -212,7 +214,7 @@ function buildPlayerRow(player, isInSquad) {
       </div>
     </div>
     <div class="pi-price">£${player.price.toFixed(1)}</div>
-    <div class="pi-points">${player.totalPoints}</div>
+    <div class="pi-points" title="Total Points (${player.totalPoints}) | Proj (${projPts})">${player.totalPoints}</div>
     <div class="fdr-mini">${fdrPips}</div>
   `;
 
