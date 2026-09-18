@@ -44,13 +44,8 @@ export const state = {
     FWD: [null, null, null],
   },
 
-  // bench: array of { pos, index } describing which 4 slots are on the bench
-  bench: [
-    { pos: 'GKP', index: 1 },
-    { pos: 'DEF', index: 4 },
-    { pos: 'MID', index: 4 },
-    { pos: 'FWD', index: 2 },
-  ],
+  // bench: array of { pos, index } describing which slots are on the bench
+  bench: [],
 
   selectedSlot: null,
   captainId: null,
@@ -479,6 +474,7 @@ export function getSlotPlayer(position, index) {
 
 export function setSlotPlayer(position, index, player) {
   state.squad[position][index] = player;
+  recalcBench();
   saveSquadToLocalStorage();
   notify('squad');
 }
@@ -512,6 +508,7 @@ export function getFormation() {
       if (p && !isBenched(pos, i)) counts[pos]++;
     });
   });
+  if (counts.DEF === 0 && counts.MID === 0 && counts.FWD === 0) return '0-0-0';
   return `${counts.DEF}-${counts.MID}-${counts.FWD}`;
 }
 
@@ -689,12 +686,7 @@ export function resetSquad() {
     MID: [null, null, null, null, null],
     FWD: [null, null, null],
   };
-  state.bench = [
-    { pos: 'GKP', index: 1 },
-    { pos: 'DEF', index: 4 },
-    { pos: 'MID', index: 4 },
-    { pos: 'FWD', index: 2 },
-  ];
+  state.bench = [];
   state.captainId = null;
   state.viceCaptainId = null;
   state.selectedSlot = null;
