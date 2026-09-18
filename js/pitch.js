@@ -6,7 +6,7 @@ import {
   state, notify, getSlotPlayer, setSlotPlayer, removePlayer,
   swapSlots, getSquadPlayers, canAddPlayer, setCaptain, setViceCaptain,
   getTeamFixtures, isBenched, recalcBench, getPlayerGWPoints,
-  getPlayerLiveStats, getTotalGWPoints, toggleChip, getActiveChip, getChipName
+  getPlayerLiveStats, getTotalGWPoints, toggleChip, getActiveChip, getChipName, getFormation
 } from './data.js';
 import { playerPhotoUrl } from './api.js';
 import { showToast } from './app.js';
@@ -17,8 +17,16 @@ export function renderPitch() {
   renderStartingXI();
   renderBench();
   renderSquadTotalPoints();
+  renderFormationBadge();
   renderLiveFixtures();
   renderChipsWidget();
+}
+
+// ── Formation badge ──
+export function renderFormationBadge() {
+  const el = document.getElementById('squad-formation-badge');
+  if (!el) return;
+  el.textContent = `Formation: ${getFormation()}`;
 }
 
 // ── Total GW points badge ──

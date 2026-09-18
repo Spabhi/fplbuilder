@@ -193,10 +193,23 @@ a { color: var(--clr-accent); text-decoration: none; }
   width: 100%;
   display: flex;
   justify-content: center;
-  padding: 6px 0 4px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px 4px;
   background: rgba(0,0,0,0.45);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.squad-formation-badge {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #38bdf8;
+  text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  padding: 2px 14px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 20px;
+  background: rgba(56, 189, 248, 0.08);
 }
 .squad-gw-points {
   font-size: 0.85rem;

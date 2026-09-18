@@ -505,55 +505,108 @@ function getPitchCounts() {
   return counts;
 }
 
+export function getFormation() {
+  const counts = { DEF: 0, MID: 0, FWD: 0 };
+  ['DEF', 'MID', 'FWD'].forEach(pos => {
+    state.squad[pos].forEach((p, i) => {
+      if (p && !isBenched(pos, i)) counts[pos]++;
+    });
+  });
+  return `${counts.DEF}-${counts.MID}-${counts.FWD}`;
+}
+
 export function swapSlots(posA, idxA, posB, idxB) {
   const aIsBench = isBenched(posA, idxA);
   const bIsBench = isBenched(posB, idxB);
   const pA = getSlotPlayer(posA, idxA);
   const pB = getSlotPlayer(posB, idxB);
 
-  // Cross-zone swap (one on pitch, one on bench) with different positions
-  // requires formation validation
-  if (aIsBench !== bIsBench && posA !== posB) {
-    // Determine who's coming on and who's going off
-    const comingOnPos = aIsBench ? posA : posB; // bench player's position
-    const goingOffPos = aIsBench ? posB : posA; // pitch player's position
+  if (!pA && !pB) {
+    return { ok: false, reason: 'No players selected to swap' };
+  }
 
-    // Calculate current pitch counts (filled pitch slots by position)
-    const pitchCounts = { GKP: 0, DEF: 0, MID: 0, FWD: 0 };
-    ['GKP', 'DEF', 'MID', 'FWD'].forEach(pos => {
-      state.squad[pos].forEach((p, i) => {
-        if (p && !isBenched(pos, i)) pitchCounts[pos]++;
-      });
-    });
+  // 1. Same position swap (e.g. DEF <-> DEF, or FWD <-> FWD)
+  if (posA === posB) {
+    state.squad[posA][idxA] = pB;
+    state.squad[posB][idxB] = pA;
 
-    const newCounts = { ...pitchCounts };
-    newCounts[comingOnPos]++;
-    newCounts[goingOffPos]--;
-
-    if (newCounts[goingOffPos] < POSITION_LIMITS[goingOffPos].minPlay) {
-      return { ok: false, reason: `Invalid: Need ≥${POSITION_LIMITS[goingOffPos].minPlay} ${goingOffPos}s on pitch` };
+    // Handle captaincy transfer if one was benched
+    if (aIsBench !== bIsBench) {
+      const benchedPlayer = aIsBench ? pA : pB;
+      const pitchPlayer = aIsBench ? pB : pA;
+      if (benchedPlayer && pitchPlayer) {
+        if (state.captainId === benchedPlayer.id) state.captainId = pitchPlayer.id;
+        if (state.viceCaptainId === benchedPlayer.id) state.viceCaptainId = pitchPlayer.id;
+      }
     }
-    if (newCounts[comingOnPos] > POSITION_LIMITS[comingOnPos].maxPlay) {
-      return { ok: false, reason: `Invalid: Max ${POSITION_LIMITS[comingOnPos].maxPlay} ${comingOnPos}s on pitch` };
+
+    saveSquadToLocalStorage();
+    notify('squad');
+    return { ok: true };
+  }
+
+  // 2. Different positions, both on bench (swap bench order)
+  if (aIsBench && bIsBench) {
+    const iA = state.bench.findIndex(b => b.pos === posA && b.index === idxA);
+    const iB = state.bench.findIndex(b => b.pos === posB && b.index === idxB);
+    if (iA !== -1 && iB !== -1) {
+      const temp = state.bench[iA];
+      state.bench[iA] = state.bench[iB];
+      state.bench[iB] = temp;
+      saveSquadToLocalStorage();
+      notify('squad');
+      return { ok: true };
     }
   }
 
-  // Perform the physical swap in the squad arrays
-  state.squad[posA][idxA] = pB;
-  state.squad[posB][idxB] = pA;
+  // 3. Different positions, both on pitch
+  if (!aIsBench && !bIsBench) {
+    return { ok: false, reason: 'Both players are already in the starting XI' };
+  }
 
-  // Handle captaincy transfer if a benched player was Captain or Vice-Captain
-  if (aIsBench !== bIsBench) {
-    const benchedPlayer = aIsBench ? pB : pA;
-    const incomingPitchPlayer = aIsBench ? pA : pB;
+  // 4. Different positions, one on pitch and one on bench (Substitution across positions)
+  const pitchPos = aIsBench ? posB : posA;
+  const pitchIdx = aIsBench ? idxB : idxA;
+  const benchPos = aIsBench ? posA : posB;
+  const benchIdx = aIsBench ? idxA : idxB;
 
-    if (benchedPlayer && incomingPitchPlayer) {
-      if (state.captainId === benchedPlayer.id) {
-        state.captainId = incomingPitchPlayer.id;
-      }
-      if (state.viceCaptainId === benchedPlayer.id) {
-        state.viceCaptainId = incomingPitchPlayer.id;
-      }
+  const pitchPlayer = getSlotPlayer(pitchPos, pitchIdx);
+  const benchPlayer = getSlotPlayer(benchPos, benchIdx);
+
+  // Validate formation limits (3-5 DEF, 2-5 MID, 1-3 FWD)
+  const currentPitchCounts = { GKP: 0, DEF: 0, MID: 0, FWD: 0 };
+  ['GKP', 'DEF', 'MID', 'FWD'].forEach(pos => {
+    state.squad[pos].forEach((p, i) => {
+      if (p && !isBenched(pos, i)) currentPitchCounts[pos]++;
+    });
+  });
+
+  const newCounts = { ...currentPitchCounts };
+  newCounts[benchPos] += 1; // coming on from bench
+  newCounts[pitchPos] -= 1; // going to bench
+
+  if (newCounts[pitchPos] < POSITION_LIMITS[pitchPos].minPlay) {
+    return { ok: false, reason: `Invalid formation: Need ≥${POSITION_LIMITS[pitchPos].minPlay} ${pitchPos}s on pitch` };
+  }
+  if (newCounts[benchPos] > POSITION_LIMITS[benchPos].maxPlay) {
+    return { ok: false, reason: `Invalid formation: Max ${POSITION_LIMITS[benchPos].maxPlay} ${benchPos}s on pitch` };
+  }
+
+  // Update bench array: bench entry becomes pitch slot
+  const benchEntryIndex = state.bench.findIndex(b => b.pos === benchPos && b.index === benchIdx);
+  if (benchEntryIndex !== -1) {
+    state.bench[benchEntryIndex] = { pos: pitchPos, index: pitchIdx };
+  } else {
+    state.bench.push({ pos: pitchPos, index: pitchIdx });
+  }
+
+  // Handle captaincy transfer if benched player was Captain or Vice-Captain
+  if (pitchPlayer) {
+    if (state.captainId === pitchPlayer.id && benchPlayer) {
+      state.captainId = benchPlayer.id;
+    }
+    if (state.viceCaptainId === pitchPlayer.id && benchPlayer) {
+      state.viceCaptainId = benchPlayer.id;
     }
   }
 
