@@ -47,7 +47,9 @@ function proxyFPLRequest(apiPath, res) {
     res.writeHead(fplRes.statusCode, {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'max-age=300',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
     });
     fplRes.pipe(res);
   });
