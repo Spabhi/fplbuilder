@@ -77,7 +77,48 @@ export function buildPlayers(elements, teams, elementTypes) {
 
   // Player team corrections for transfers / API dataset inconsistencies
   const PLAYER_TEAM_OVERRIDES = {
-    165: 5, // João Pedro -> Brighton & Hove Albion (BHA)
+    14: 8,   // Eze -> Crystal Palace (CRY)
+    16: 6,   // Madueke -> Chelsea (CHE)
+    24: 19,  // Nelson -> Spurs (TOT)
+    28: 19,  // E. Martinez -> Spurs (TOT)
+    31: 2,   // Konsa -> Aston Villa (AVL)
+    40: 2,   // Rogers -> Aston Villa (AVL)
+    43: 2,   // Tielemans -> Aston Villa (AVL)
+    128: 11, // Buonanotte -> Hull City / Leicester (HUL)
+    136: 5,  // Welbeck -> Brighton & Hove Albion (BHA)
+    146: 6,  // B. Badiashile -> Chelsea (CHE)
+    150: 8,  // M. Sarr -> Crystal Palace (CRY)
+    160: 16, // Garnacho -> Man Utd (MUN)
+    165: 6,  // João Pedro -> Chelsea (CHE)
+    166: 6,  // N. Jackson -> Chelsea (CHE)
+    167: 12, // Delap -> Ipswich Town (IPS)
+    209: 19, // B. Johnson -> Spurs (TOT)
+    222: 17, // Strand Larsen -> Newcastle (NEW)
+    237: 9,  // Ndiaye -> Everton (EVE)
+    241: 9,  // McNeil -> Everton (EVE)
+    244: 20, // A. Armstrong -> Sunderland (SUN)
+    245: 20, // Dibling -> Sunderland (SUN)
+    295: 17, // McBurnie -> Newcastle (NEW)
+    315: 11, // Fatawu -> Hull City (HUL)
+    346: 9,  // Calvert-Lewin -> Everton (EVE)
+    379: 17, // Isak -> Newcastle (NEW)
+    388: 8,  // Guéhi -> Crystal Palace (CRY)
+    392: 17, // Aït-Nouri -> Newcastle (NEW)
+    397: 3,  // Semenyo -> Bournemouth (BOU)
+    427: 4,  // Mbeumo -> Brentford (BRE)
+    428: 17, // Cunha -> Newcastle (NEW)
+    452: 17, // Bruno Guimarães -> Newcastle (NEW)
+    454: 18, // Elanga -> Nott'm Forest (NFO)
+    455: 17, // Tonali -> Newcastle (NEW)
+    464: 4,  // Wissa -> Brentford (BRE)
+    484: 12, // Hutchinson -> Ipswich Town (IPS)
+    502: 14, // Robertson -> Liverpool (LIV)
+    512: 10, // Kudus -> Fulham (FUL)
+    519: 2,  // Gallagher -> Aston Villa (AVL)
+    546: 5,  // Adingra -> Brighton & Hove Albion (BHA)
+    566: 10, // Silva -> Fulham (FUL)
+    630: 18, // Harwood-Bellis -> Nott'm Forest (NFO)
+    657: 16, // Nunes -> Man Utd (MUN)
   };
 
   return elements
@@ -95,9 +136,12 @@ export function buildPlayers(elements, teams, elementTypes) {
         teamName: teamMap[effectiveTeamId]?.name || '',
         teamShort: teamMap[effectiveTeamId]?.short_name || '',
         teamCode: el.team_code,
-      position: posMap[el.element_type] || 'UNK',
-      positionId: el.element_type,
-      price: el.now_cost / 10,
+        position: posMap[el.element_type] || 'UNK',
+        positionId: el.element_type,
+        price: parseFloat((el.now_cost / 10).toFixed(1)),
+        startPrice: parseFloat(((el.now_cost - el.cost_change_start) / 10).toFixed(1)),
+        costChangeStart: parseFloat((el.cost_change_start / 10).toFixed(1)),
+        costChangeEvent: parseFloat((el.cost_change_event / 10).toFixed(1)),
       totalPoints: el.total_points,
       eventPoints: el.event_points,
       form: parseFloat(el.form) || 0,
