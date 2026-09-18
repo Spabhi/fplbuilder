@@ -308,6 +308,14 @@ async function main() {
       });
     }
 
+    document.getElementById('btn-proj-toggle')?.addEventListener('click', () => {
+      state.showProjected = !state.showProjected;
+      const btn = document.getElementById('btn-proj-toggle');
+      if (btn) btn.classList.toggle('active', state.showProjected);
+      renderPitch();
+      showToast(state.showProjected ? 'Projected Points view enabled 🔮' : 'Actual GW Points view enabled 📊', 'info');
+    });
+
     document.getElementById('btn-reset')?.addEventListener('click', () => {
       if (confirm('Reset your squad?')) {
         resetSquad();

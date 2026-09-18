@@ -51,6 +51,7 @@ export const state = {
   captainId: null,
   viceCaptainId: null,
 
+  showProjected: false,
   filters: { position: 'ALL', team: 'ALL', search: '', sort: 'points' },
   statsFilters: { position: 'ALL', search: '', sort: 'total_points' },
   _listeners: [],
@@ -282,6 +283,39 @@ export function getTotalGWPoints() {
     }
   });
   return total;
+}
+
+/**
+ * Total Projected GW points for starting XI.
+ * Includes Triple Captain (3x multiplier) and Bench Boost if active.
+ */
+export function getTotalProjectedPoints() {
+  let total = 0;
+  const isTripleCaptain = state.chips?.tripleCaptain?.active;
+  const isBenchBoost = state.chips?.benchBoost?.active;
+
+  getSquadPlayers().forEach(({ player, isBench }) => {
+    if (isBench && !isBenchBoost) return;
+    const proj = computeProjectedPoints(player);
+    const isCapt = state.captainId === player.id;
+    if (isCapt) {
+      const captMult = isTripleCaptain ? 3 : 2;
+      total += proj * captMult;
+    } else {
+      total += proj;
+    }
+  });
+  return parseFloat(total.toFixed(1));
+}
+
+/**
+ * Check whether all fixtures in current GW are completed
+ */
+export function isGWFinished() {
+  if (!state.rawFixtures || state.rawFixtures.length === 0) return false;
+  const currentFixes = state.rawFixtures.filter(f => f.event === state.currentGW);
+  if (currentFixes.length === 0) return false;
+  return currentFixes.every(f => f.finished || f.finished_provisional);
 }
 
 // ── Chip Helpers ──

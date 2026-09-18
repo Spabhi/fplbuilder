@@ -6,7 +6,8 @@ import {
   state, notify, getSlotPlayer, setSlotPlayer, removePlayer,
   swapSlots, getSquadPlayers, canAddPlayer, setCaptain, setViceCaptain,
   getTeamFixtures, isBenched, recalcBench, getPlayerGWPoints,
-  getPlayerLiveStats, getTotalGWPoints, toggleChip, getActiveChip, getChipName, getFormation
+  getPlayerLiveStats, getTotalGWPoints, toggleChip, getActiveChip, getChipName, getFormation,
+  getTotalProjectedPoints, isGWFinished, computeProjectedPoints
 } from './data.js';
 import { playerPhotoUrl } from './api.js';
 import { showToast } from './app.js';
@@ -33,8 +34,16 @@ export function renderFormationBadge() {
 export function renderSquadTotalPoints() {
   const el = document.getElementById('squad-gw-points');
   if (!el) return;
-  const total = getTotalGWPoints();
-  el.textContent = `GW${state.currentGW} Points: ${total}`;
+
+  if (state.showProjected) {
+    const totalProj = getTotalProjectedPoints();
+    el.textContent = `🔮 GW${state.currentGW} Proj Points: ${totalProj}`;
+    el.classList.add('proj-mode');
+  } else {
+    const total = getTotalGWPoints();
+    el.textContent = `GW${state.currentGW} Points: ${total}`;
+    el.classList.remove('proj-mode');
+  }
 }
 
 // ── Live Fixtures ──
@@ -258,14 +267,27 @@ function buildFilledSlot(player, isBench) {
   const viceBadge = isVice
     ? '<span class="vice-badge" title="Vice-Captain">V</span>' : '';
 
-  // Live GW points
-  const gwPts = getPlayerGWPoints(player);
-  const displayPts = isCaptain ? gwPts * (isTripleCaptain ? 3 : 2) : gwPts;
-  const ptsSuffix = isCaptain ? (isTripleCaptain ? ' (C×3)' : ' (C×2)') : (isVice ? ' (VC)' : '');
+  // Live GW vs Projected points
+  let displayPtsStr = '';
+  let gwBadgeClass = '';
+
+  if (state.showProjected) {
+    const proj = computeProjectedPoints(player);
+    const displayPts = isCaptain ? (proj * (isTripleCaptain ? 3 : 2)).toFixed(1) : proj.toFixed(1);
+    const ptsSuffix = isCaptain ? (isTripleCaptain ? ' (C×3)' : ' (C×2)') : (isVice ? ' (VC)' : '');
+    displayPtsStr = `🔮 ${displayPts}pts${ptsSuffix}`;
+    gwBadgeClass = 'pts-yellow';
+  } else {
+    const gwPts = getPlayerGWPoints(player);
+    const displayPts = isCaptain ? gwPts * (isTripleCaptain ? 3 : 2) : gwPts;
+    const ptsSuffix = isCaptain ? (isTripleCaptain ? ' (C×3)' : ' (C×2)') : (isVice ? ' (VC)' : '');
+    displayPtsStr = `${displayPts}pts${ptsSuffix}`;
+    gwBadgeClass = isGWFinished() ? 'pts-finished' : 'pts-ongoing';
+  }
 
   // Stats tooltip for live breakdown
   const live = getPlayerLiveStats(player);
-  let statsTitle = `${player.webName} | £${player.price.toFixed(1)}m | Season: ${player.totalPoints}pts`;
+  let statsTitle = `${player.webName} | £${player.price.toFixed(1)}m | Season: ${player.totalPoints}pts | Proj: ${computeProjectedPoints(player)}pts`;
   if (live) {
     const parts = [];
     if (live.goals) parts.push(`⚽ ${live.goals}`);
@@ -279,7 +301,6 @@ function buildFilledSlot(player, isBench) {
   }
 
   const benchClass = isBench ? 'bench-player' : '';
-  const gwBadgeClass = gwPts > 0 ? 'pts-positive' : (gwPts < 0 ? 'pts-negative' : '');
 
   return `
     <div class="player-photo" title="${statsTitle}">
@@ -294,7 +315,7 @@ function buildFilledSlot(player, isBench) {
       <div class="player-name bg-${posClass}">${player.webName}</div>
       <div class="player-price-pts">
         <span class="player-price">£${player.price.toFixed(1)}</span>
-        <span class="player-gw-pts ${gwBadgeClass}" title="GW${state.currentGW} points">${displayPts}pts${ptsSuffix}</span>
+        <span class="player-gw-pts ${gwBadgeClass}" title="GW${state.currentGW} ${state.showProjected ? 'projected' : 'actual'} points">${displayPtsStr}</span>
       </div>
     </div>
   `;
