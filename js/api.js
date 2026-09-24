@@ -172,6 +172,10 @@ export function buildPlayers(elements, teams, elementTypes) {
       threat: parseFloat(el.threat) || 0,
       xg: parseFloat(el.expected_goals) || 0,
       xa: parseFloat(el.expected_assists) || 0,
+      // Set-piece orders (1 = primary taker)
+      penaltiesOrder: el.penalties_order || null,
+      directFreesOrder: el.direct_freekicks_order || null,
+      cornersOrder: el.corners_and_indirect_fk_order || null,
       // Helpers
       photoUrl: playerPhotoUrl(el.code),
       availabilityClass: statusToClass(el.status),

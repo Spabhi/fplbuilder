@@ -684,12 +684,21 @@ export function computeProjectedPoints(player, nextFixtureOverride = null) {
   const xg = player.xg || 0;
   const xa = player.xa || 0;
 
+  // 1. Form & Expected Threat Baseline
   const formBaseline = (ppg * 0.35) + (form * 0.40) + (epNext * 0.25);
   const expectedThreatBonus = (xg * 2.2) + (xa * 1.8);
 
+  // 2. Set-Piece & Penalty Duty Bonus
+  let setPieceBonus = 0;
+  if (player.penaltiesOrder === 1) setPieceBonus += 0.8;
+  if (player.directFreesOrder === 1) setPieceBonus += 0.4;
+  if (player.cornersOrder === 1) setPieceBonus += 0.4;
+
+  // 3. FDR & Home Advantage Impact
   const fdrImpact = (3 - fdr) * 0.8;
   const homeAdvantageBonus = isHome ? 0.7 : -0.3;
 
+  // 4. Positional Clean Sheet & Attack Concession Probability
   const pos = player.position || 'UNK';
   let xgConcessionBonus = 0;
 
@@ -701,11 +710,13 @@ export function computeProjectedPoints(player, nextFixtureOverride = null) {
     xgConcessionBonus = attackConcessionMultiplier + expectedThreatBonus;
   }
 
+  // 5. Tactical & Positional Baseline
   const tacticalPositionalBase = { GKP: 2.2, DEF: 2.5, MID: 3.0, FWD: 3.2 };
   const baseRating = tacticalPositionalBase[pos] || 2.5;
 
-  const rawProjection = (formBaseline * 0.45) + baseRating + fdrImpact + homeAdvantageBonus + xgConcessionBonus;
+  const rawProjection = (formBaseline * 0.45) + baseRating + fdrImpact + homeAdvantageBonus + xgConcessionBonus + setPieceBonus;
 
+  // 6. Availability & Minutes Risk Multiplier
   let availabilityMultiplier = 1.0;
   if (player.status === 'd') {
     availabilityMultiplier = player.chanceNextRound !== null ? (player.chanceNextRound / 100) : 0.5;
@@ -713,58 +724,58 @@ export function computeProjectedPoints(player, nextFixtureOverride = null) {
     availabilityMultiplier = 0.05;
   }
 
-  const projected = Math.max(0.5, Math.min(15.0, rawProjection * availabilityMultiplier));
+  // Minutes / Rotation risk factor
+  let minutesFactor = 1.0;
+  if (player.minutes !== undefined && player.minutes > 0) {
+    const estGwCount = Math.max(1, state.currentGW || 1);
+    const avgMins = player.minutes / estGwCount;
+    if (avgMins < 60) {
+      minutesFactor = Math.max(0.4, avgMins / 60);
+    }
+  }
+
+  const projected = Math.max(0.5, Math.min(15.0, rawProjection * availabilityMultiplier * minutesFactor));
   return parseFloat(projected.toFixed(1));
 }
 
-// ── Multi-factor Composite Scoring Heuristic ──
+// ── Unified Composite Player Score (for Improve Team & Player Rankings) ──
 /**
- * Computes a player's overall rating based on:
- * 1. Historical Gameweek Points: Total Points & Points Per Game & recent GW points
- * 2. Player Form: Recent form (p.form * 6.5) & Expected points (epNext * 8.0) & ICT Index
- * 3. Upcoming Fixtures & Team Difficulty: FDR score (weighted heavily for next GW)
- * 4. Home / Away Advantage: +3.5 rating bonus if next fixture is at Home (isHome === true)
- * 5. Injury & Availability Status: Penalty multiplier for doubtful, injured, or suspended players
+ * Computes a player's overall squad value rating by unifying:
+ * 1. Multi-Gameweek Projected Horizon (GW+1 to GW+3)
+ * 2. Captaincy Candidate Multiplier (boost for top premium scorers)
+ * 3. Budget Efficiency Index (Points per £m Value Ratio)
+ * 4. Availability & Health Status
  */
 export function computePlayerScore(p) {
   if (!p) return 0;
 
-  // 1. Points & Points Per Game (historical performance)
-  const gwPts = getPlayerGWPoints(p);
-  const basePoints = (p.totalPoints * 0.25) + (p.pointsPerGame * 3.5) + (gwPts * 1.5);
+  // 1. Immediate GW Projection
+  const proj1 = computeProjectedPoints(p);
 
-  // 2. Player Form & Expected Performance & ICT Index
-  const formScore = (p.form * 6.5) + (p.epNext * 8.0) + (p.ictIndex * 0.08);
-
-  // 3. Upcoming Fixtures & Team Difficulty (FDR: 1 = easiest, 5 = hardest)
-  let fdrBonus = 10;
-  let homeAdvantageBonus = 0;
-
-  if (p.fdrNext && p.fdrNext.length > 0) {
-    const nextFix = p.fdrNext[0];
-    const nextFdr = nextFix.fdr || 3;
-    const remainingAvgFdr = p.fdrNext.slice(1).reduce((sum, f) => sum + (f.fdr || 3), 0) / Math.max(1, p.fdrNext.length - 1);
-    const weightedFdr = (nextFdr * 0.5) + (remainingAvgFdr * 0.5);
-
-    fdrBonus = (6 - weightedFdr) * 4.5;
-
-    // 4. Home / Away Advantage
-    if (nextFix.isHome) {
-      homeAdvantageBonus = 3.5; // +3.5 rating bonus for playing at Home
-    }
+  // 2. Multi-Gameweek Projected Horizon (GW+1 to GW+3)
+  let projHorizon = proj1;
+  if (p.fdrNext && p.fdrNext.length > 1) {
+    const proj2 = computeProjectedPoints(p, p.fdrNext[1]);
+    const proj3 = p.fdrNext[2] ? computeProjectedPoints(p, p.fdrNext[2]) : proj2;
+    projHorizon = (proj1 * 0.50) + (proj2 * 0.30) + (proj3 * 0.20);
   }
 
-  const rawScore = basePoints + formScore + fdrBonus + homeAdvantageBonus;
-
-  // 5. Injury & Availability Multiplier
-  let availabilityMultiplier = 1.0;
-  if (p.status === 'd') {
-    availabilityMultiplier = p.chanceNextRound !== null ? (p.chanceNextRound / 100) : 0.5;
-  } else if (p.status !== 'a') {
-    availabilityMultiplier = 0.05;
+  // 3. Captaincy Multiplier for Elite Heavies
+  let captainBonus = 1.0;
+  if (proj1 >= 6.0) {
+    captainBonus = 1.20;
+  } else if (proj1 >= 5.0) {
+    captainBonus = 1.10;
   }
 
-  return rawScore * availabilityMultiplier;
+  // 4. Budget Efficiency Index (Points per £m)
+  const price = Math.max(3.8, p.price || 4.5);
+  const ppm = (projHorizon / price) * 10;
+
+  // Composite Score: 70% projected potential (weighted for captaincy) + 30% budget value ratio
+  const overallScore = ((projHorizon * captainBonus) * 10 * 0.70) + (ppm * 0.30);
+
+  return parseFloat(overallScore.toFixed(2));
 }
 
 // ── Reset ──
