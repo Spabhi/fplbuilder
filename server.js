@@ -56,8 +56,12 @@ function proxyFPLRequest(apiPath, res) {
 
   req.on('error', (err) => {
     console.error('[PROXY ERROR]', err.message);
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: err.message }));
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    } else {
+      res.end();
+    }
   });
 
   req.end();
