@@ -253,9 +253,19 @@ async function main() {
     let currentEvent = events.find(e => e.is_current) || events.find(e => e.id === 1);
     const nextEvent = events.find(e => e.is_next);
 
-    if (nextEvent) {
-      const hoursUntilDeadline = (new Date(nextEvent.deadline_time) - new Date()) / 3600000;
-      if (hoursUntilDeadline <= 24) currentEvent = nextEvent;
+    // Roll over to the next GW 2 hours after the current GW's final match ends
+    if (nextEvent && currentEvent) {
+      const currentFixes = fixtures.filter(f => f.event === currentEvent.id);
+      const allFinished = currentFixes.length > 0 &&
+        currentFixes.every(f => f.finished || f.finished_provisional);
+      if (allFinished) {
+        const lastKickoff = Math.max(...currentFixes.map(f => new Date(f.kickoff_time).getTime()));
+        const MATCH_DURATION_MS = 115 * 60 * 1000; // ~90 min + half-time + stoppage
+        const ROLLOVER_DELAY_MS = 2 * 60 * 60 * 1000; // 2 hours after GW ends
+        if (Date.now() >= lastKickoff + MATCH_DURATION_MS + ROLLOVER_DELAY_MS) {
+          currentEvent = nextEvent;
+        }
+      }
     }
 
     state.currentGW = currentEvent?.id || 1;
